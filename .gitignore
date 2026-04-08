@@ -1,0 +1,9 @@
+.metadata/
+.m2repo/
+**/target/
+**/.classpath
+**/.project
+**/.settings/
+temp_test.txt
+hs_err_pid*.log
+replay_pid*.log
