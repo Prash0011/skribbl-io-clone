@@ -125,6 +125,24 @@ public class RoomService {
         }
     }
 
+    public void disconnect(String sessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            return;
+        }
+
+        for (GameRoom room : rooms.values()) {
+            synchronized (room) {
+                PlayerState disconnectedPlayer = room.findBySessionId(sessionId);
+                if (disconnectedPlayer == null) {
+                    continue;
+                }
+
+                removePlayerFromRoom(room, disconnectedPlayer);
+                return;
+            }
+        }
+    }
+
     public void toggleReady(String roomId, String playerId) {
         GameRoom room = getRoom(roomId);
         synchronized (room) {
@@ -273,6 +291,75 @@ public class RoomService {
 
     private void autoStartPublicGame(GameRoom room) {
         initializeGame(room, true);
+    }
+
+    private void removePlayerFromRoom(GameRoom room, PlayerState disconnectedPlayer) {
+        boolean wasDrawer = Objects.equals(room.drawerPlayerId, disconnectedPlayer.id);
+        boolean wasHost = Objects.equals(room.hostPlayerId, disconnectedPlayer.id);
+
+        room.players.remove(disconnectedPlayer.id);
+        room.drawerOrder.remove(disconnectedPlayer.id);
+
+        if (room.players.isEmpty()) {
+            cancelTasks(room);
+            rooms.remove(room.id);
+            return;
+        }
+
+        if (wasHost) {
+            room.hostPlayerId = room.players.keySet().iterator().next();
+        }
+
+        if (WAITING.equals(room.phase)) {
+            room.statusMessage = disconnectedPlayer.name + " left the room.";
+            broadcastRoom(room);
+            return;
+        }
+
+        if (room.players.size() < 2) {
+            resetToWaiting(room, disconnectedPlayer.name + " left. Waiting for more players to continue.");
+            broadcastRoom(room);
+            return;
+        }
+
+        if (!room.drawerOrder.isEmpty()) {
+            room.drawerIndex = Math.min(room.drawerIndex, room.drawerOrder.size() - 1);
+        }
+
+        if (wasDrawer) {
+            if (room.drawerIndex >= room.drawerOrder.size()) {
+                room.drawerIndex = 0;
+            }
+            room.turnNumber = Math.max(1, room.turnNumber - 1);
+            cancelTasks(room);
+            room.statusMessage = disconnectedPlayer.name + " left during their turn.";
+            advanceTurn(room);
+            return;
+        }
+
+        room.statusMessage = disconnectedPlayer.name + " left the room.";
+        broadcastRoom(room);
+    }
+
+    private void resetToWaiting(GameRoom room, String statusMessage) {
+        cancelTasks(room);
+        room.phase = WAITING;
+        room.drawerOrder = new ArrayList<>(room.players.keySet());
+        room.wordChoices = new ArrayList<>();
+        room.drawerPlayerId = null;
+        room.selectedWord = null;
+        room.currentRound = 0;
+        room.turnNumber = 0;
+        room.drawerIndex = 0;
+        room.roundEndsAt = 0L;
+        room.winnerName = null;
+        room.canvas.clear();
+        room.revealedIndexes.clear();
+        room.players.values().forEach(player -> player.guessedCorrectly = false);
+        room.statusMessage = statusMessage;
+        if (PUBLIC.equals(room.roomType) && room.players.size() >= PUBLIC_MATCH_MIN_PLAYERS) {
+            autoStartPublicGame(room);
+        }
     }
 
     private void initializeGame(GameRoom room, boolean autoReadyEveryone) {
@@ -577,6 +664,13 @@ public class RoomService {
                 player.ready = true;
                 player.guessedCorrectly = false;
             }
+        }
+
+        private PlayerState findBySessionId(String sessionId) {
+            return players.values().stream()
+                .filter(player -> sessionId.equals(player.sessionId))
+                .findFirst()
+                .orElse(null);
         }
     }
 
