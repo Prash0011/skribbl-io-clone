@@ -104,14 +104,7 @@ If your browser blocks local-file API/WebSocket access, serve the frontend folde
 
 ## Render deployment
 
-This project is now prepared for a single-service Render deployment where Spring Boot serves both the API and the frontend.
-
-### Build locally before pushing
-
-```powershell
-cd E:\MCA\Web3Task_Assignment\skribbl-clone-backend
-mvn clean package -DskipTests
-```
+This project is prepared for a single-service Render deployment using Docker, with Spring Boot serving both the API and the frontend.
 
 ### Push to GitHub
 
@@ -121,10 +114,10 @@ Push the full project to a GitHub repository so Render can deploy it.
 
 Use these settings:
 
-- Runtime: `Java`
+- Language: `Docker`
 - Root Directory: `skribbl-clone-backend`
-- Build Command: `mvn clean package -DskipTests`
-- Start Command: `java -jar target/skribbl-clone-backend-0.0.1-SNAPSHOT.jar`
+
+Leave the build and start command fields empty because Render will use the [Dockerfile](E:/MCA/Web3Task_Assignment/skribbl-clone-backend/Dockerfile).
 
 ### Environment
 
@@ -141,4 +134,4 @@ Open these paths to verify:
 - `/`
 - `/api/health`
 
-The frontend now uses same-origin requests in production, so REST and WebSocket traffic both work from the same Render domain.
+The frontend uses same-origin requests in production, so REST and WebSocket traffic both work from the same Render domain.
