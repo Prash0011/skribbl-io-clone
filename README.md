@@ -1,6 +1,6 @@
 # Skribble.io Clone
 
-A real-time multiplayer drawing and guessing game inspired by skribbl.io. Players can join public matchmaking or create private rooms, draw on a shared canvas, guess words in real time, and compete on points across multiple rounds.
+A real-time multiplayer drawing and guessing game inspired by skribbl.io. Players can join public matchmaking or create private rooms, draw on a shared canvas, guess words in real time, and compete on points across multiple rounds.  
 
 ## Live Demo
 - Live URL: https://skribbl-io-clone-rbl2.onrender.com
