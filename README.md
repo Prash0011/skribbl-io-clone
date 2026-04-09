@@ -1,137 +1,188 @@
-# Skribbl Clone MVP
+# Skribble.io Clone
 
-This project implements the assignment as a Spring Boot + STOMP backend with a plain HTML, CSS, and JavaScript frontend.
+A real-time multiplayer drawing and guessing game inspired by skribbl.io. Players can join public matchmaking or create private rooms, draw on a shared canvas, guess words in real time, and compete on points across multiple rounds.
 
-## Stack
+## Live Demo
+- Live URL: https://skribbl-io-clone-rbl2.onrender.com
+- GitHub Repository: https://github.com/Prash0011/skribbl-io-clone
 
-- Backend: Java 17, Spring Boot, Spring WebSocket (STOMP)
-- Real-time communication: SockJS + STOMP
+## Tech Stack
+- Backend: Java 17, Spring Boot
+- Real-time Communication: Spring WebSocket, STOMP, SockJS
 - Frontend: HTML, CSS, JavaScript
-- Storage: In-memory room state and in-memory word list
+- Rendering: HTML Canvas API
+- Storage: In-memory room state and word list
+- Deployment: Render using Docker
 
-## What is implemented
-
-- Quick Play public matchmaking by entering only a player name
-- Private room creation with custom settings
-- Private room join by room code
-- Automatic public match start when 2 players are matched
-- Lobby with player list, ready state, and host-controlled private game start
-- Turn-based drawing rounds
-- Word selection for the active drawer
-- Realtime canvas sync over WebSockets
-- Guess submission and scoring
+## Features Implemented
+- Public matchmaking
+- Private room creation
+- Invite-based private room joining
+- Real-time drawing synchronization
+- Turn-based drawing and guessing rounds
+- Word selection for the drawer
+- Guess checking and score calculation
+- Leaderboard and winner announcement
 - Hint reveal over time
-- Winner announcement at game end
+- Undo and clear canvas controls
+- Player disconnect cleanup
+- Public deployment
 
-## Backend setup
+## Core Game Flow
+1. A player enters a nickname and either joins public matchmaking or creates a private room.
+2. In a private room, the host can invite other players using a shareable link.
+3. Once enough players are present, the game starts.
+4. One player becomes the drawer and chooses a word.
+5. The drawer draws on the shared canvas while other players submit guesses.
+6. Correct guesses earn points and rounds continue until all configured rounds are completed.
+7. The player with the highest score wins.
 
-1. Open a terminal in the backend folder.
-2. Run:
+## Local Setup
 
-```powershell
-cd E:\MCA\Web3Task_Assignment\skribbl-clone-backend
-mvn "-Dmaven.repo.local=E:/MCA/Web3Task_Assignment/.m2repo" spring-boot:run
-```
+### Prerequisites
+- Java 17+
+- Maven
 
-Or run the Spring Boot app directly from Eclipse.
+### Run Locally
+```bash
+cd skribbl-clone-backend
+mvn spring-boot:run
+Then open:
 
-The backend runs on `http://localhost:8080`.
+http://localhost:8080
+Architecture Overview
+High-Level Design
+This project is designed as a real-time multiplayer game with a Spring Boot backend and a lightweight HTML/CSS/JavaScript frontend. The backend manages rooms, game state, players, scores, and synchronization. The frontend handles user interaction, canvas drawing, chat input, and live room updates.
 
-## Frontend setup
+Backend Responsibilities
+The backend is responsible for:
 
-Open this file in a browser after the backend is running:
+creating and joining rooms
+public matchmaking
+private room invite handling
+managing rounds and drawer rotation
+handling word selection
+scoring guesses
+revealing hints
+removing disconnected players
+broadcasting game state updates
+Main backend files:
 
-- `E:\MCA\Web3Task_Assignment\skribbl-clone-frontend\index.html`
+RoomService.java handles room lifecycle, turn order, gameplay rules, scores, and public/private room behavior
+RoomController.java exposes REST endpoints for room creation, joining, matchmaking, and room fetch
+GameMessageController.java handles real-time STOMP messages
+WebSocketConfig.java configures WebSocket/STOMP endpoints and broker setup
+Frontend Responsibilities
+The frontend is responsible for:
 
-If your browser blocks local-file API/WebSocket access, serve the frontend folder with Live Server.
+landing page and room entry flow
+private room invite/join UI
+canvas drawing interactions
+chat and guess input
+rendering room/player/game status
+listening to real-time updates from the backend
+Main frontend files:
 
-## How to test
+index.html
+styles.css
+app.js
+REST + WebSocket Communication
+The application uses a hybrid communication model.
 
-### Public match
+REST is used for:
 
-1. Open the frontend in browser A.
-2. Enter a name.
-3. Click `Enter Name & Join Room`.
-4. Open the frontend in browser B.
-5. Enter another name.
-6. Click `Enter Name & Join Room`.
-7. Once 2 players are matched, the public game starts automatically.
+room creation
+room joining
+public matchmaking
+initial room state bootstrap
+WebSocket/STOMP is used for:
 
-### Private room
+live room state updates
+drawing strokes
+guesses
+word selection
+canvas clear/undo
+system/game messages
+Drawing Synchronization
+The drawer uses the HTML canvas to draw strokes. Each stroke includes:
 
-1. Open the frontend in browser A.
-2. Enter a name.
-3. Choose private room settings.
-4. Click `Create Private Room`.
-5. Copy the room code shown in the UI.
-6. Open the frontend in browser B.
-7. Enter another name and paste the room code.
-8. Click `Join by Code`.
-9. In the private room, players can ready up and the host can start the game.
+start and end coordinates
+selected color
+brush size
+The frontend sends stroke data through WebSocket, and the backend broadcasts it to all players in the room. Every client re-renders the same stroke so all players stay visually in sync.
 
-## Architecture overview
+Game State Management
+The backend keeps active game state in memory, including:
 
-- REST endpoints bootstrap the session by creating, joining, or matchmaking into a room and return the player's `playerId` plus the current room state.
-- STOMP channels handle live gameplay updates.
-- `RoomService` holds in-memory active room state, public matchmaking, drawer rotation, scoring, hint timing, round progression, and the word bank.
-- The frontend subscribes to room-wide topics for shared events and a player-specific topic for private drawer state such as word choices.
+room ID and room type
+players in the room
+current host
+current drawer
+selected word
+hint state
+scores
+round number
+timer state
+winner
+Word Matching Logic
+Guess validation normalizes text by:
 
-## Main endpoints and topics
+trimming whitespace
+converting to lowercase
+collapsing repeated spaces
+This improves matching reliability for user guesses.
 
-### REST
+Disconnect Handling
+If a player closes the tab or disconnects:
 
-- `POST /api/rooms`
-- `POST /api/rooms/join`
-- `POST /api/rooms/public`
-- `GET /api/rooms/{roomId}?playerId=...`
-- `GET /api/health`
+they are removed from the room
+their turn is removed from rotation
+if they were the host, another player becomes host
+if they were the current drawer, the game advances safely
+empty public rooms are deleted
+API / Messaging Overview
+REST Endpoints
+POST /api/rooms
+POST /api/rooms/join
+POST /api/rooms/public
+GET /api/rooms/{roomId}?playerId=...
+GET /api/health
+STOMP App Destinations
+/app/room.connect
+/app/room.ready
+/app/room.start
+/app/game.choose-word
+/app/game.draw
+/app/game.clear
+/app/game.undo
+/app/game.guess
+STOMP Subscriptions
+/topic/rooms/{roomId}
+/topic/rooms/{roomId}/player/{playerId}
+Deployment
+The application is deployed publicly on Render.
 
-### STOMP app destinations
+Deployment details:
 
-- `/app/room.connect`
-- `/app/room.ready`
-- `/app/room.start`
-- `/app/game.choose-word`
-- `/app/game.draw`
-- `/app/game.clear`
-- `/app/game.undo`
-- `/app/game.guess`
+Docker-based deployment
+single service for backend + frontend
+Spring Boot serves static frontend files and backend APIs from the same domain
+WebSocket communication works on the deployed production URL
+Live URL:
 
-### STOMP subscriptions
+https://skribbl-io-clone-rbl2.onrender.com
+Limitations
+Current storage is in-memory only
+game state is lost if the server restarts
+no authentication or persistent user accounts
+public matchmaking is simpler than the original skribbl.io
+free hosting may take time to wake up after inactivity
+Submission Checklist
+This project includes the assignment deliverables:
 
-- `/topic/rooms/{roomId}`
-- `/topic/rooms/{roomId}/player/{playerId}`
-
-## Render deployment
-
-This project is prepared for a single-service Render deployment using Docker, with Spring Boot serving both the API and the frontend.
-
-### Push to GitHub
-
-Push the full project to a GitHub repository so Render can deploy it.
-
-### Create a Render Web Service
-
-Use these settings:
-
-- Language: `Docker`
-- Root Directory: `skribbl-clone-backend`
-
-Leave the build and start command fields empty because Render will use the [Dockerfile](E:/MCA/Web3Task_Assignment/skribbl-clone-backend/Dockerfile).
-
-### Environment
-
-No database variables are required for the current in-memory version.
-
-### After deploy
-
-Render will provide a URL like:
-
-- `https://your-service-name.onrender.com`
-
-Open these paths to verify:
-
-- `/`
-- `/api/health`
-
-The frontend uses same-origin requests in production, so REST and WebSocket traffic both work from the same Render domain.
+working deployed application
+source code repository
+README with setup instructions
+live deployment URL
+architecture overview
+explanation-ready code structure
