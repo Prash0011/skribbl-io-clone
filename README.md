@@ -44,7 +44,6 @@ A real-time multiplayer drawing and guessing game inspired by skribbl.io. Player
 - Maven
 
 ### Run Locally
-```bash
 cd skribbl-clone-backend
 mvn spring-boot:run
 Then open:
