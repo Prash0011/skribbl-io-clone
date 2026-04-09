@@ -10,6 +10,7 @@ import com.skribbl.backend.room.DrawActionRequest;
 import com.skribbl.backend.room.GuessRequest;
 import com.skribbl.backend.room.PlayerActionRequest;
 import com.skribbl.backend.room.RoomService;
+import com.skribbl.backend.room.UpdateRoomSettingsRequest;
 
 @Controller
 public class GameMessageController {
@@ -33,6 +34,11 @@ public class GameMessageController {
     @MessageMapping("/room.start")
     public void startGame(PlayerActionRequest request) {
         roomService.startGame(request.roomId(), request.playerId());
+    }
+
+    @MessageMapping("/room.settings")
+    public void updateSettings(UpdateRoomSettingsRequest request) {
+        roomService.updatePrivateSettings(request.roomId(), request.playerId(), request.settings());
     }
 
     @MessageMapping("/game.choose-word")

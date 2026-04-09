@@ -114,6 +114,40 @@ select {
     text-align: left;
 }
 
+.private-settings {
+    margin-top: 16px;
+    margin-bottom: 18px;
+    padding: 16px;
+    border-radius: 20px;
+    background:
+        linear-gradient(135deg, rgba(66, 133, 244, 0.1), rgba(251, 188, 4, 0.12));
+    border: 1px solid rgba(66, 133, 244, 0.16);
+}
+
+.private-settings-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.private-settings-head h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.settings-lock {
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.75);
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
 .field span {
     color: var(--muted);
     font-size: 0.94rem;
@@ -510,5 +544,10 @@ input[type="range"] {
 @media (max-width: 720px) {
     .settings-grid {
         grid-template-columns: 1fr;
+    }
+
+    .private-settings-head {
+        align-items: flex-start;
+        flex-direction: column;
     }
 }

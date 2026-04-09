@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skribble.io Clone</title>
-    <link rel="stylesheet" href="./styles.css?v=4">
+    <link rel="stylesheet" href="./styles.css?v=5">
 </head>
 <body>
     <main class="app-shell">
@@ -29,59 +29,6 @@
                             <option value="German">German</option>
                         </select>
                     </label>
-
-                    <div class="settings-grid">
-                        <label class="field">
-                            <span>Players</span>
-                            <select id="maxPlayers">
-                                <option value="4">4</option>
-                                <option value="6" selected>6</option>
-                                <option value="8">8</option>
-                                <option value="10">10</option>
-                                <option value="12">12</option>
-                            </select>
-                        </label>
-
-                        <label class="field">
-                            <span>Rounds</span>
-                            <select id="rounds">
-                                <option value="2">2</option>
-                                <option value="3" selected>3</option>
-                                <option value="4">4</option>
-                                <option value="5">5</option>
-                            </select>
-                        </label>
-
-                        <label class="field">
-                            <span>Draw Time</span>
-                            <select id="drawTimeSeconds">
-                                <option value="60">60s</option>
-                                <option value="80" selected>80s</option>
-                                <option value="100">100s</option>
-                                <option value="120">120s</option>
-                            </select>
-                        </label>
-
-                        <label class="field">
-                            <span>Hints</span>
-                            <select id="hintCount">
-                                <option value="1">1</option>
-                                <option value="2" selected>2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                            </select>
-                        </label>
-
-                        <label class="field wide">
-                            <span>Word Choices</span>
-                            <select id="wordChoiceCount">
-                                <option value="2">2</option>
-                                <option value="3" selected>3</option>
-                                <option value="4">4</option>
-                                <option value="5">5</option>
-                            </select>
-                        </label>
-                    </div>
 
                 <div class="landing-actions">
                     <button id="quickPlayBtn" class="cta primary-btn">Play</button>
@@ -147,6 +94,74 @@
                         <h2>Players</h2>
                         <span id="winnerChip" class="winner-chip"></span>
                     </div>
+                    <section id="privateSettingsPanel" class="private-settings hidden">
+                        <div class="private-settings-head">
+                            <h3>Private Room Settings</h3>
+                            <span id="settingsLock" class="settings-lock">Host controls</span>
+                        </div>
+                        <div class="settings-grid">
+                            <label class="field">
+                                <span>Players</span>
+                                <select id="maxPlayers">
+                                    <option value="4">4</option>
+                                    <option value="6" selected>6</option>
+                                    <option value="8">8</option>
+                                    <option value="10">10</option>
+                                    <option value="12">12</option>
+                                </select>
+                            </label>
+
+                            <label class="field">
+                                <span>Rounds</span>
+                                <select id="rounds">
+                                    <option value="2">2</option>
+                                    <option value="3" selected>3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                </select>
+                            </label>
+
+                            <label class="field">
+                                <span>Draw Time</span>
+                                <select id="drawTimeSeconds">
+                                    <option value="60">60s</option>
+                                    <option value="80" selected>80s</option>
+                                    <option value="100">100s</option>
+                                    <option value="120">120s</option>
+                                </select>
+                            </label>
+
+                            <label class="field">
+                                <span>Hints</span>
+                                <select id="hintCount">
+                                    <option value="1">1</option>
+                                    <option value="2" selected>2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                </select>
+                            </label>
+
+                            <label class="field">
+                                <span>Word Choices</span>
+                                <select id="wordChoiceCount">
+                                    <option value="2">2</option>
+                                    <option value="3" selected>3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                </select>
+                            </label>
+
+                            <label class="field">
+                                <span>Language</span>
+                                <select id="privateLanguageSelect">
+                                    <option value="English">English</option>
+                                    <option value="Hindi">Hindi</option>
+                                    <option value="French">French</option>
+                                    <option value="German">German</option>
+                                </select>
+                            </label>
+                        </div>
+                    </section>
                     <ul id="playerList" class="player-list"></ul>
                 </aside>
 
@@ -188,6 +203,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
-    <script src="./app.js?v=4"></script>
+    <script src="./app.js?v=5"></script>
 </body>
 </html>

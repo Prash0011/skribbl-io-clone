@@ -6,7 +6,7 @@
 })();
 
 const PRIVATE_ROOM_DEFAULTS = {
-    maxPlayers: 50,
+    maxPlayers: 6,
     rounds: 3,
     drawTimeSeconds: 80,
     wordChoiceCount: 3,
@@ -34,11 +34,14 @@ const dom = {
     inviteNotice: document.getElementById("inviteNotice"),
     playerName: document.getElementById("playerName"),
     languageSelect: document.getElementById("languageSelect"),
+    privateSettingsPanel: document.getElementById("privateSettingsPanel"),
+    settingsLock: document.getElementById("settingsLock"),
     maxPlayers: document.getElementById("maxPlayers"),
     rounds: document.getElementById("rounds"),
     drawTimeSeconds: document.getElementById("drawTimeSeconds"),
     hintCount: document.getElementById("hintCount"),
     wordChoiceCount: document.getElementById("wordChoiceCount"),
+    privateLanguageSelect: document.getElementById("privateLanguageSelect"),
     quickPlayBtn: document.getElementById("quickPlayBtn"),
     createRoomBtn: document.getElementById("createRoomBtn"),
     inviteOverlay: document.getElementById("inviteOverlay"),
@@ -141,7 +144,7 @@ const createPrivateRoom = async () => {
     const response = await fetch(`${API_BASE}/api/rooms`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerName, settings: getPrivateSettings() })
+        body: JSON.stringify({ playerName, settings: PRIVATE_ROOM_DEFAULTS })
     });
     const data = await parseResponse(response);
     await bootstrapSession(data);
@@ -271,9 +274,41 @@ const renderRoom = (room) => {
     dom.languageBadge.textContent = `Language: ${state.selectedLanguage}`;
     dom.winnerChip.textContent = room?.winnerName ? `Winner: ${room.winnerName}` : "";
 
+    renderPrivateSettings(room);
     renderPlayers(room?.players || []);
     renderWordBanner(room?.maskedWord || "Waiting for round");
     updateButtons();
+};
+
+const renderPrivateSettings = (room) => {
+    const isPrivate = room?.roomType === "PRIVATE";
+    const me = room?.players?.find((player) => player.id === state.playerId);
+    const canEdit = Boolean(isPrivate && me?.host && room.phase === "WAITING");
+
+    dom.privateSettingsPanel.classList.toggle("hidden", !isPrivate);
+    if (!isPrivate) {
+        return;
+    }
+
+    const settings = room?.settings || PRIVATE_ROOM_DEFAULTS;
+    dom.maxPlayers.value = String(settings.maxPlayers);
+    dom.rounds.value = String(settings.rounds);
+    dom.drawTimeSeconds.value = String(settings.drawTimeSeconds);
+    dom.hintCount.value = String(settings.hintCount);
+    dom.wordChoiceCount.value = String(settings.wordChoiceCount);
+    dom.privateLanguageSelect.value = state.selectedLanguage || "English";
+    dom.settingsLock.textContent = canEdit ? "Host controls" : "Host only";
+
+    [
+        dom.maxPlayers,
+        dom.rounds,
+        dom.drawTimeSeconds,
+        dom.hintCount,
+        dom.wordChoiceCount,
+        dom.privateLanguageSelect
+    ].forEach((element) => {
+        element.disabled = !canEdit;
+    });
 };
 
 const renderPlayers = (players) => {
@@ -471,6 +506,7 @@ const showInviteRoomShell = (roomId) => {
     state.room = null;
     state.roomId = roomId;
     clearMessages();
+    dom.privateSettingsPanel.classList.remove("hidden");
     renderPlayers([]);
     renderWordChoices([]);
     renderWordBanner("Join this private room to start drawing and guessing.");
@@ -480,6 +516,12 @@ const showInviteRoomShell = (roomId) => {
     dom.roundInfo.textContent = "0 / 0";
     dom.statusMessage.textContent = "You were invited to a private room.";
     dom.winnerChip.textContent = "";
+    renderPrivateSettings({
+        roomType: "PRIVATE",
+        phase: "WAITING",
+        settings: PRIVATE_ROOM_DEFAULTS,
+        players: []
+    });
     showGameView();
     updateButtons();
 };
@@ -512,6 +554,25 @@ const updateInviteUrl = (roomId) => {
     const url = new URL(window.location.href);
     url.searchParams.set("room", roomId);
     window.history.replaceState({}, "", url.toString());
+};
+
+const syncPrivateSettings = () => {
+    const room = state.room;
+    const me = room?.players?.find((player) => player.id === state.playerId);
+    if (!room || room.roomType !== "PRIVATE" || !me?.host || room.phase !== "WAITING") {
+        return;
+    }
+
+    state.selectedLanguage = readInputValue(dom.privateLanguageSelect, state.selectedLanguage || "English");
+    send("/app/room.settings", {
+        roomId: state.roomId,
+        playerId: state.playerId,
+        settings: getPrivateSettings()
+    });
+    renderRoom({
+        ...room,
+        settings: getPrivateSettings()
+    });
 };
 
 setInterval(() => {
@@ -560,6 +621,22 @@ dom.invitePlayerName?.addEventListener("keydown", (event) => {
             alert(error.message);
         });
     }
+});
+
+[
+    dom.maxPlayers,
+    dom.rounds,
+    dom.drawTimeSeconds,
+    dom.hintCount,
+    dom.wordChoiceCount
+].forEach((element) => {
+    element?.addEventListener("change", syncPrivateSettings);
+});
+
+dom.privateLanguageSelect?.addEventListener("change", () => {
+    state.selectedLanguage = readInputValue(dom.privateLanguageSelect, "English");
+    syncPrivateSettings();
+    renderRoom(state.room);
 });
 
 dom.board?.addEventListener("pointerdown", startDrawing);

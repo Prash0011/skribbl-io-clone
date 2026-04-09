@@ -151,6 +151,25 @@ public class RoomService {
         }
     }
 
+    public void updatePrivateSettings(String roomId, String playerId, RoomSettingsRequest settings) {
+        GameRoom room = getRoom(roomId);
+        synchronized (room) {
+            if (PUBLIC.equals(room.roomType)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Public room settings are fixed.");
+            }
+            if (!WAITING.equals(room.phase)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Settings can only be changed before the game starts.");
+            }
+            if (!Objects.equals(playerId, room.hostPlayerId)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the host can change room settings.");
+            }
+
+            room.settings = sanitizePrivateSettings(settings);
+            room.statusMessage = "Private room settings updated.";
+            broadcastRoom(room);
+        }
+    }
+
     public void startGame(String roomId, String playerId) {
         GameRoom room = getRoom(roomId);
         synchronized (room) {
@@ -614,7 +633,7 @@ public class RoomService {
 
     private static final class GameRoom {
         private final String id;
-        private final RoomSettingsRequest settings;
+        private RoomSettingsRequest settings;
         private final String roomType;
         private final boolean autoStart;
         private final long createdAt;
