@@ -147,16 +147,7 @@ public class RoomService {
     public void toggleReady(String roomId, String playerId) {
         GameRoom room = getRoom(roomId);
         synchronized (room) {
-            if (PUBLIC.equals(room.roomType)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Public matches start automatically.");
-            }
-            if (!WAITING.equals(room.phase)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Game already started.");
-            }
-            PlayerState player = requirePlayer(room, playerId);
-            player.ready = !player.ready;
-            room.statusMessage = player.name + (player.ready ? " is ready." : " is not ready.");
-            broadcastRoom(room);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ready toggling is no longer used.");
         }
     }
 
@@ -171,10 +162,6 @@ public class RoomService {
             }
             if (room.players.size() < 2) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least 2 players are required.");
-            }
-            boolean everyoneReady = room.players.values().stream().allMatch(player -> player.ready || player.id.equals(room.hostPlayerId));
-            if (!everyoneReady) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "All players must be ready.");
             }
             initializeGame(room, false);
         }
@@ -278,6 +265,7 @@ public class RoomService {
     }
 
     private GameRoom findJoinablePublicRoom() {
+        prunePublicRooms();
         GameRoom bestMatch = selectBestPublicRoom(rooms.values());
         if (bestMatch != null) {
             return bestMatch;
@@ -297,6 +285,15 @@ public class RoomService {
                 .thenComparingInt(GameRoom::playerCount)
                 .thenComparingLong(GameRoom::createdAt))
             .orElse(null);
+    }
+
+    private void prunePublicRooms() {
+        List<String> roomIdsToRemove = rooms.values().stream()
+            .filter(GameRoom::shouldDeletePublicRoom)
+            .map(room -> room.id)
+            .toList();
+
+        roomIdsToRemove.forEach(rooms::remove);
     }
 
     private void autoStartPublicGame(GameRoom room) {
@@ -655,7 +652,7 @@ public class RoomService {
             }
 
             PlayerState player = new PlayerState(UUID.randomUUID().toString(), trimmedName);
-            player.ready = players.isEmpty() || autoStart;
+            player.ready = true;
             players.put(player.id, player);
             if (hostPlayerId == null) {
                 hostPlayerId = player.id;
@@ -665,11 +662,12 @@ public class RoomService {
 
         private boolean isJoinablePublicRoom() {
             return PUBLIC.equals(roomType)
+                && !players.isEmpty()
                 && !GAME_OVER.equals(phase);
         }
 
         private int publicPriority() {
-            return WAITING.equals(phase) ? 1 : 2;
+            return isActivePublicGame() ? 2 : 1;
         }
 
         private int playerCount() {
@@ -678,6 +676,16 @@ public class RoomService {
 
         private long createdAt() {
             return createdAt;
+        }
+
+        private boolean isActivePublicGame() {
+            return PUBLIC.equals(roomType)
+                && (PICKING_WORD.equals(phase) || PLAYING.equals(phase) || ROUND_END.equals(phase));
+        }
+
+        private boolean shouldDeletePublicRoom() {
+            return PUBLIC.equals(roomType)
+                && (players.isEmpty() || GAME_OVER.equals(phase));
         }
 
         private void handleLateJoin(PlayerState player) {

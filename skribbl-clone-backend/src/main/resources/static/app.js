@@ -34,6 +34,11 @@ const dom = {
     inviteNotice: document.getElementById("inviteNotice"),
     playerName: document.getElementById("playerName"),
     languageSelect: document.getElementById("languageSelect"),
+    maxPlayers: document.getElementById("maxPlayers"),
+    rounds: document.getElementById("rounds"),
+    drawTimeSeconds: document.getElementById("drawTimeSeconds"),
+    hintCount: document.getElementById("hintCount"),
+    wordChoiceCount: document.getElementById("wordChoiceCount"),
     quickPlayBtn: document.getElementById("quickPlayBtn"),
     createRoomBtn: document.getElementById("createRoomBtn"),
     inviteOverlay: document.getElementById("inviteOverlay"),
@@ -41,7 +46,6 @@ const dom = {
     invitePlayerName: document.getElementById("invitePlayerName"),
     joinInviteBtn: document.getElementById("joinInviteBtn"),
     backHomeBtn: document.getElementById("backHomeBtn"),
-    readyBtn: document.getElementById("readyBtn"),
     startGameBtn: document.getElementById("startGameBtn"),
     inviteBtn: document.getElementById("inviteBtn"),
     undoBtn: document.getElementById("undoBtn"),
@@ -111,6 +115,15 @@ const getInvitePlayerName = () => {
     return playerName;
 };
 
+const getPrivateSettings = () => ({
+    maxPlayers: Number(readInputValue(dom.maxPlayers, String(PRIVATE_ROOM_DEFAULTS.maxPlayers))),
+    rounds: Number(readInputValue(dom.rounds, String(PRIVATE_ROOM_DEFAULTS.rounds))),
+    drawTimeSeconds: Number(readInputValue(dom.drawTimeSeconds, String(PRIVATE_ROOM_DEFAULTS.drawTimeSeconds))),
+    wordChoiceCount: Number(readInputValue(dom.wordChoiceCount, String(PRIVATE_ROOM_DEFAULTS.wordChoiceCount))),
+    hintCount: Number(readInputValue(dom.hintCount, String(PRIVATE_ROOM_DEFAULTS.hintCount))),
+    privateRoom: true
+});
+
 const quickPlay = async () => {
     const playerName = getLandingPlayerName();
     const response = await fetch(`${API_BASE}/api/rooms/public`, {
@@ -128,7 +141,7 @@ const createPrivateRoom = async () => {
     const response = await fetch(`${API_BASE}/api/rooms`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerName, settings: PRIVATE_ROOM_DEFAULTS })
+        body: JSON.stringify({ playerName, settings: getPrivateSettings() })
     });
     const data = await parseResponse(response);
     await bootstrapSession(data);
@@ -320,7 +333,6 @@ const clearMessages = () => {
 const updateButtons = () => {
     const room = state.room;
     if (!room) {
-        dom.readyBtn.disabled = true;
         dom.startGameBtn.disabled = true;
         dom.inviteBtn.disabled = !state.invitedRoomId;
         dom.undoBtn.disabled = true;
@@ -337,7 +349,6 @@ const updateButtons = () => {
     const isWaiting = room.phase === "WAITING";
     const isPrivate = room.roomType === "PRIVATE";
 
-    dom.readyBtn.disabled = !(isPrivate && isWaiting);
     dom.startGameBtn.disabled = !(isPrivate && isHost && room.canStart && isWaiting);
     dom.inviteBtn.disabled = !isPrivate;
     dom.undoBtn.disabled = !(isDrawer && isPlaying);
@@ -532,7 +543,6 @@ dom.backHomeBtn?.addEventListener("click", () => {
     showLandingView();
 });
 
-dom.readyBtn?.addEventListener("click", () => send("/app/room.ready", { roomId: state.roomId, playerId: state.playerId }));
 dom.startGameBtn?.addEventListener("click", () => send("/app/room.start", { roomId: state.roomId, playerId: state.playerId }));
 dom.inviteBtn?.addEventListener("click", invitePrivateRoom);
 dom.undoBtn?.addEventListener("click", () => send("/app/game.undo", { roomId: state.roomId, playerId: state.playerId }));
