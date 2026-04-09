@@ -69,6 +69,13 @@ const dom = {
 const ctx = dom.board.getContext("2d");
 let previousPoint = null;
 
+const readInputValue = (element, fallback = "") => {
+    if (!element || typeof element.value !== "string") {
+        return fallback;
+    }
+    return element.value;
+};
+
 const setAppStatus = (text, isError = false) => {
     dom.appStatus.textContent = text;
     dom.appStatus.classList.toggle("error", isError);
@@ -86,17 +93,17 @@ const showGameView = () => {
 };
 
 const getLandingPlayerName = () => {
-    const playerName = dom.playerName.value.trim();
+    const playerName = readInputValue(dom.playerName).trim();
     if (!playerName) {
         alert("Enter your name first.");
         throw new Error("Player name is required.");
     }
-    state.selectedLanguage = dom.languageSelect.value;
+    state.selectedLanguage = readInputValue(dom.languageSelect, "English") || "English";
     return playerName;
 };
 
 const getInvitePlayerName = () => {
-    const playerName = dom.invitePlayerName.value.trim();
+    const playerName = readInputValue(dom.invitePlayerName).trim();
     if (!playerName) {
         alert("Enter your name first.");
         throw new Error("Player name is required.");
@@ -142,7 +149,9 @@ const joinInvitedPrivateRoom = async () => {
         body: JSON.stringify({ playerName, roomId })
     });
     const data = await parseResponse(response);
-    dom.playerName.value = playerName;
+    if (dom.playerName) {
+        dom.playerName.value = playerName;
+    }
     await bootstrapSession(data);
     setAppStatus(`Joined private room ${data.roomId}.`);
     updateInviteUrl(data.roomId);
@@ -382,8 +391,8 @@ const moveDrawing = (event) => {
         y1: previousPoint.y,
         x2: point.x,
         y2: point.y,
-        color: dom.colorPicker.value,
-        size: Number(dom.brushSize.value)
+        color: readInputValue(dom.colorPicker, "#4285F4"),
+        size: Number(readInputValue(dom.brushSize, "4"))
     };
     drawStroke(stroke);
     state.strokes.push(stroke);
@@ -397,12 +406,14 @@ const stopDrawing = () => {
 };
 
 const sendGuess = () => {
-    const text = dom.guessInput.value.trim();
+    const text = readInputValue(dom.guessInput).trim();
     if (!text) {
         return;
     }
     send("/app/game.guess", { roomId: state.roomId, playerId: state.playerId, text });
-    dom.guessInput.value = "";
+    if (dom.guessInput) {
+        dom.guessInput.value = "";
+    }
 };
 
 const invitePrivateRoom = async () => {
@@ -477,7 +488,9 @@ const restoreInviteContext = () => {
 
 const clearInviteContext = () => {
     state.invitedRoomId = null;
-    dom.invitePlayerName.value = "";
+    if (dom.invitePlayerName) {
+        dom.invitePlayerName.value = "";
+    }
     dom.inviteOverlay.classList.add("hidden");
     const url = new URL(window.location.href);
     url.searchParams.delete("room");
@@ -499,38 +512,38 @@ setInterval(() => {
     dom.timer.textContent = `${Math.ceil(diff / 1000)}s`;
 }, 250);
 
-dom.quickPlayBtn.addEventListener("click", () => quickPlay().catch((error) => {
+dom.quickPlayBtn?.addEventListener("click", () => quickPlay().catch((error) => {
     setAppStatus(`Play failed: ${error.message}`, true);
     alert(error.message);
 }));
 
-dom.createRoomBtn.addEventListener("click", () => createPrivateRoom().catch((error) => {
+dom.createRoomBtn?.addEventListener("click", () => createPrivateRoom().catch((error) => {
     setAppStatus(`Create room failed: ${error.message}`, true);
     alert(error.message);
 }));
 
-dom.joinInviteBtn.addEventListener("click", () => joinInvitedPrivateRoom().catch((error) => {
+dom.joinInviteBtn?.addEventListener("click", () => joinInvitedPrivateRoom().catch((error) => {
     setAppStatus(`Join room failed: ${error.message}`, true);
     alert(error.message);
 }));
 
-dom.backHomeBtn.addEventListener("click", () => {
+dom.backHomeBtn?.addEventListener("click", () => {
     clearInviteContext();
     showLandingView();
 });
 
-dom.readyBtn.addEventListener("click", () => send("/app/room.ready", { roomId: state.roomId, playerId: state.playerId }));
-dom.startGameBtn.addEventListener("click", () => send("/app/room.start", { roomId: state.roomId, playerId: state.playerId }));
-dom.inviteBtn.addEventListener("click", invitePrivateRoom);
-dom.undoBtn.addEventListener("click", () => send("/app/game.undo", { roomId: state.roomId, playerId: state.playerId }));
-dom.clearBtn.addEventListener("click", () => send("/app/game.clear", { roomId: state.roomId, playerId: state.playerId }));
-dom.sendGuessBtn.addEventListener("click", sendGuess);
-dom.guessInput.addEventListener("keydown", (event) => {
+dom.readyBtn?.addEventListener("click", () => send("/app/room.ready", { roomId: state.roomId, playerId: state.playerId }));
+dom.startGameBtn?.addEventListener("click", () => send("/app/room.start", { roomId: state.roomId, playerId: state.playerId }));
+dom.inviteBtn?.addEventListener("click", invitePrivateRoom);
+dom.undoBtn?.addEventListener("click", () => send("/app/game.undo", { roomId: state.roomId, playerId: state.playerId }));
+dom.clearBtn?.addEventListener("click", () => send("/app/game.clear", { roomId: state.roomId, playerId: state.playerId }));
+dom.sendGuessBtn?.addEventListener("click", sendGuess);
+dom.guessInput?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
         sendGuess();
     }
 });
-dom.invitePlayerName.addEventListener("keydown", (event) => {
+dom.invitePlayerName?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
         joinInvitedPrivateRoom().catch((error) => {
             setAppStatus(`Join room failed: ${error.message}`, true);
@@ -539,10 +552,10 @@ dom.invitePlayerName.addEventListener("keydown", (event) => {
     }
 });
 
-dom.board.addEventListener("pointerdown", startDrawing);
-dom.board.addEventListener("pointermove", moveDrawing);
-dom.board.addEventListener("pointerup", stopDrawing);
-dom.board.addEventListener("pointerleave", stopDrawing);
+dom.board?.addEventListener("pointerdown", startDrawing);
+dom.board?.addEventListener("pointermove", moveDrawing);
+dom.board?.addEventListener("pointerup", stopDrawing);
+dom.board?.addEventListener("pointerleave", stopDrawing);
 
 checkBackend();
 restoreInviteContext();
