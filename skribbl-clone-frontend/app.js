@@ -5,6 +5,15 @@
     return isFileProtocol || isLocalStaticHost ? "http://localhost:8080" : origin;
 })();
 
+const PRIVATE_ROOM_DEFAULTS = {
+    maxPlayers: 50,
+    rounds: 3,
+    drawTimeSeconds: 80,
+    wordChoiceCount: 3,
+    hintCount: 2,
+    privateRoom: true
+};
+
 const state = {
     roomId: null,
     playerId: null,
@@ -25,15 +34,13 @@ const dom = {
     inviteNotice: document.getElementById("inviteNotice"),
     playerName: document.getElementById("playerName"),
     languageSelect: document.getElementById("languageSelect"),
-    maxPlayers: document.getElementById("maxPlayers"),
-    rounds: document.getElementById("rounds"),
-    drawTimeSeconds: document.getElementById("drawTimeSeconds"),
-    wordChoiceCount: document.getElementById("wordChoiceCount"),
-    hintCount: document.getElementById("hintCount"),
-    joinRoomId: document.getElementById("joinRoomId"),
     quickPlayBtn: document.getElementById("quickPlayBtn"),
     createRoomBtn: document.getElementById("createRoomBtn"),
-    joinRoomBtn: document.getElementById("joinRoomBtn"),
+    inviteOverlay: document.getElementById("inviteOverlay"),
+    inviteRoomCode: document.getElementById("inviteRoomCode"),
+    invitePlayerName: document.getElementById("invitePlayerName"),
+    joinInviteBtn: document.getElementById("joinInviteBtn"),
+    backHomeBtn: document.getElementById("backHomeBtn"),
     readyBtn: document.getElementById("readyBtn"),
     startGameBtn: document.getElementById("startGameBtn"),
     inviteBtn: document.getElementById("inviteBtn"),
@@ -67,12 +74,18 @@ const setAppStatus = (text, isError = false) => {
     dom.appStatus.classList.toggle("error", isError);
 };
 
+const showLandingView = () => {
+    dom.gameView.classList.add("hidden");
+    dom.landingView.classList.remove("hidden");
+    dom.inviteOverlay.classList.add("hidden");
+};
+
 const showGameView = () => {
     dom.landingView.classList.add("hidden");
     dom.gameView.classList.remove("hidden");
 };
 
-const getPlayerName = () => {
+const getLandingPlayerName = () => {
     const playerName = dom.playerName.value.trim();
     if (!playerName) {
         alert("Enter your name first.");
@@ -82,17 +95,17 @@ const getPlayerName = () => {
     return playerName;
 };
 
-const getPrivateSettings = () => ({
-    maxPlayers: Number(dom.maxPlayers.value),
-    rounds: Number(dom.rounds.value),
-    drawTimeSeconds: Number(dom.drawTimeSeconds.value),
-    wordChoiceCount: Number(dom.wordChoiceCount.value),
-    hintCount: Number(dom.hintCount.value),
-    privateRoom: true
-});
+const getInvitePlayerName = () => {
+    const playerName = dom.invitePlayerName.value.trim();
+    if (!playerName) {
+        alert("Enter your name first.");
+        throw new Error("Player name is required.");
+    }
+    return playerName;
+};
 
 const quickPlay = async () => {
-    const playerName = getPlayerName();
+    const playerName = getLandingPlayerName();
     const response = await fetch(`${API_BASE}/api/rooms/public`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,11 +117,11 @@ const quickPlay = async () => {
 };
 
 const createPrivateRoom = async () => {
-    const playerName = getPlayerName();
+    const playerName = getLandingPlayerName();
     const response = await fetch(`${API_BASE}/api/rooms`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerName, settings: getPrivateSettings() })
+        body: JSON.stringify({ playerName, settings: PRIVATE_ROOM_DEFAULTS })
     });
     const data = await parseResponse(response);
     await bootstrapSession(data);
@@ -116,12 +129,11 @@ const createPrivateRoom = async () => {
     updateInviteUrl(data.roomId);
 };
 
-const joinPrivateRoom = async () => {
-    const playerName = getPlayerName();
-    const roomId = (state.invitedRoomId || dom.joinRoomId.value).trim().toUpperCase();
+const joinInvitedPrivateRoom = async () => {
+    const playerName = getInvitePlayerName();
+    const roomId = (state.invitedRoomId || "").trim().toUpperCase();
     if (!roomId) {
-        alert("Enter a private room code.");
-        throw new Error("Private room code is required.");
+        throw new Error("Invite room is missing.");
     }
 
     const response = await fetch(`${API_BASE}/api/rooms/join`, {
@@ -130,6 +142,7 @@ const joinPrivateRoom = async () => {
         body: JSON.stringify({ playerName, roomId })
     });
     const data = await parseResponse(response);
+    dom.playerName.value = playerName;
     await bootstrapSession(data);
     setAppStatus(`Joined private room ${data.roomId}.`);
     updateInviteUrl(data.roomId);
@@ -140,7 +153,7 @@ const bootstrapSession = async (data) => {
     state.playerId = data.playerId;
     state.playerName = data.playerName;
     state.room = data.room;
-    dom.joinRoomId.value = data.roomId;
+    dom.inviteOverlay.classList.add("hidden");
     clearMessages();
     addMessage(`Connected as ${data.playerName}.`, true);
     showGameView();
@@ -228,16 +241,16 @@ const send = (destination, payload) => {
 
 const renderRoom = (room) => {
     state.room = room;
-    dom.roomCode.textContent = room.roomId || "-";
-    dom.roomType.textContent = room.roomType || "-";
-    dom.phase.textContent = room.phase;
-    dom.roundInfo.textContent = `${room.currentRound} / ${room.totalRounds}`;
-    dom.statusMessage.textContent = room.statusMessage || "Waiting for updates";
+    dom.roomCode.textContent = room?.roomId || state.invitedRoomId || "-";
+    dom.roomType.textContent = room?.roomType || "PRIVATE";
+    dom.phase.textContent = room?.phase || "WAITING";
+    dom.roundInfo.textContent = room ? `${room.currentRound} / ${room.totalRounds}` : "0 / 0";
+    dom.statusMessage.textContent = room?.statusMessage || "Waiting for updates";
     dom.languageBadge.textContent = `Language: ${state.selectedLanguage}`;
-    dom.winnerChip.textContent = room.winnerName ? `Winner: ${room.winnerName}` : "";
+    dom.winnerChip.textContent = room?.winnerName ? `Winner: ${room.winnerName}` : "";
 
-    renderPlayers(room.players || []);
-    renderWordBanner(room.maskedWord || "Waiting for round");
+    renderPlayers(room?.players || []);
+    renderWordBanner(room?.maskedWord || "Waiting for round");
     updateButtons();
 };
 
@@ -298,8 +311,16 @@ const clearMessages = () => {
 const updateButtons = () => {
     const room = state.room;
     if (!room) {
+        dom.readyBtn.disabled = true;
+        dom.startGameBtn.disabled = true;
+        dom.inviteBtn.disabled = !state.invitedRoomId;
+        dom.undoBtn.disabled = true;
+        dom.clearBtn.disabled = true;
+        dom.sendGuessBtn.disabled = true;
+        dom.guessInput.disabled = true;
         return;
     }
+
     const me = room.players.find((player) => player.id === state.playerId);
     const isHost = me?.host;
     const isDrawer = me?.drawer;
@@ -424,6 +445,23 @@ const checkBackend = async () => {
     }
 };
 
+const showInviteRoomShell = (roomId) => {
+    state.room = null;
+    state.roomId = roomId;
+    clearMessages();
+    renderPlayers([]);
+    renderWordChoices([]);
+    renderWordBanner("Join this private room to start drawing and guessing.");
+    dom.roomCode.textContent = roomId;
+    dom.roomType.textContent = "PRIVATE";
+    dom.phase.textContent = "WAITING";
+    dom.roundInfo.textContent = "0 / 0";
+    dom.statusMessage.textContent = "You were invited to a private room.";
+    dom.winnerChip.textContent = "";
+    showGameView();
+    updateButtons();
+};
+
 const restoreInviteContext = () => {
     const params = new URLSearchParams(window.location.search);
     const invitedRoomId = (params.get("room") || "").trim().toUpperCase();
@@ -432,11 +470,18 @@ const restoreInviteContext = () => {
     }
 
     state.invitedRoomId = invitedRoomId;
-    dom.joinRoomId.value = invitedRoomId;
-    dom.joinRoomId.classList.add("hidden");
-    dom.joinRoomBtn.textContent = "Join Invited Room";
-    dom.inviteNotice.textContent = `Invite detected for private room ${invitedRoomId}. Enter your nickname and click Join Invited Room.`;
-    dom.inviteNotice.classList.remove("hidden");
+    dom.inviteRoomCode.textContent = invitedRoomId;
+    showInviteRoomShell(invitedRoomId);
+    dom.inviteOverlay.classList.remove("hidden");
+};
+
+const clearInviteContext = () => {
+    state.invitedRoomId = null;
+    dom.invitePlayerName.value = "";
+    dom.inviteOverlay.classList.add("hidden");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("room");
+    window.history.replaceState({}, "", url.toString());
 };
 
 const updateInviteUrl = (roomId) => {
@@ -464,10 +509,15 @@ dom.createRoomBtn.addEventListener("click", () => createPrivateRoom().catch((err
     alert(error.message);
 }));
 
-dom.joinRoomBtn.addEventListener("click", () => joinPrivateRoom().catch((error) => {
+dom.joinInviteBtn.addEventListener("click", () => joinInvitedPrivateRoom().catch((error) => {
     setAppStatus(`Join room failed: ${error.message}`, true);
     alert(error.message);
 }));
+
+dom.backHomeBtn.addEventListener("click", () => {
+    clearInviteContext();
+    showLandingView();
+});
 
 dom.readyBtn.addEventListener("click", () => send("/app/room.ready", { roomId: state.roomId, playerId: state.playerId }));
 dom.startGameBtn.addEventListener("click", () => send("/app/room.start", { roomId: state.roomId, playerId: state.playerId }));
@@ -478,6 +528,14 @@ dom.sendGuessBtn.addEventListener("click", sendGuess);
 dom.guessInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
         sendGuess();
+    }
+});
+dom.invitePlayerName.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+        joinInvitedPrivateRoom().catch((error) => {
+            setAppStatus(`Join room failed: ${error.message}`, true);
+            alert(error.message);
+        });
     }
 });
 

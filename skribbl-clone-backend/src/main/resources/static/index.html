@@ -30,15 +30,10 @@
                         </select>
                     </label>
 
-                    <div class="landing-actions">
-                        <button id="quickPlayBtn" class="cta primary-btn">Play</button>
-                        <button id="createRoomBtn" class="cta secondary-btn">Create Room</button>
-                    </div>
-
-                    <div class="join-code-row">
-                        <input id="joinRoomId" type="text" placeholder="Enter private room code">
-                        <button id="joinRoomBtn" class="cta tertiary-btn">Join Room</button>
-                    </div>
+                <div class="landing-actions">
+                    <button id="quickPlayBtn" class="cta primary-btn">Play</button>
+                    <button id="createRoomBtn" class="cta secondary-btn">Create Room</button>
+                </div>
                 </div>
 
                 <p id="appStatus" class="app-status">Loading frontend...</p>
@@ -46,6 +41,19 @@
         </section>
 
         <section id="gameView" class="view game-view hidden">
+            <div id="inviteOverlay" class="invite-overlay hidden">
+                <div class="invite-modal">
+                    <span class="invite-chip">Private Invite</span>
+                    <h2>Join Room <span id="inviteRoomCode">-</span></h2>
+                    <p>Enter your nickname to join the same private room as the host.</p>
+                    <input id="invitePlayerName" type="text" placeholder="Enter your name">
+                    <div class="invite-actions">
+                        <button id="joinInviteBtn" class="cta primary-btn">Join Room</button>
+                        <button id="backHomeBtn" class="cta tertiary-btn">Back</button>
+                    </div>
+                </div>
+            </div>
+
             <header class="game-header">
                 <h1 class="room-title">Skribble.io Clone</h1>
                 <div class="header-stats">

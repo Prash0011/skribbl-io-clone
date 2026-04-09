@@ -3,6 +3,7 @@ package com.skribbl.backend.room;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -277,16 +278,25 @@ public class RoomService {
     }
 
     private GameRoom findJoinablePublicRoom() {
-        for (GameRoom room : rooms.values()) {
-            if (room.isJoinablePublicRoom()) {
-                return room;
-            }
+        GameRoom bestMatch = selectBestPublicRoom(rooms.values());
+        if (bestMatch != null) {
+            return bestMatch;
         }
         String roomId = generateRoomId();
         GameRoom room = new GameRoom(roomId, publicSettings(), PUBLIC, true);
         room.statusMessage = "Public queue created. Waiting for players...";
         rooms.put(room.id, room);
         return room;
+    }
+
+    private GameRoom selectBestPublicRoom(Collection<GameRoom> allRooms) {
+        return allRooms.stream()
+            .filter(GameRoom::isJoinablePublicRoom)
+            .max(Comparator
+                .comparingInt(GameRoom::publicPriority)
+                .thenComparingInt(GameRoom::playerCount)
+                .thenComparingLong(GameRoom::createdAt))
+            .orElse(null);
     }
 
     private void autoStartPublicGame(GameRoom room) {
@@ -610,6 +620,7 @@ public class RoomService {
         private final RoomSettingsRequest settings;
         private final String roomType;
         private final boolean autoStart;
+        private final long createdAt;
         private final Map<String, PlayerState> players = new LinkedHashMap<>();
         private final List<StrokeData> canvas = new ArrayList<>();
         private final Set<Integer> revealedIndexes = new LinkedHashSet<>();
@@ -634,6 +645,7 @@ public class RoomService {
             this.settings = settings;
             this.roomType = roomType;
             this.autoStart = autoStart;
+            this.createdAt = System.currentTimeMillis();
         }
 
         private PlayerState addPlayer(String name) {
@@ -654,6 +666,18 @@ public class RoomService {
         private boolean isJoinablePublicRoom() {
             return PUBLIC.equals(roomType)
                 && !GAME_OVER.equals(phase);
+        }
+
+        private int publicPriority() {
+            return WAITING.equals(phase) ? 1 : 2;
+        }
+
+        private int playerCount() {
+            return players.size();
+        }
+
+        private long createdAt() {
+            return createdAt;
         }
 
         private void handleLateJoin(PlayerState player) {
